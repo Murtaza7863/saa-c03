@@ -20,6 +20,8 @@ python3 -m http.server 8080
 
 Open [http://localhost:8080](http://localhost:8080). Progress stays in this browser.
 
+Live site (GitHub Pages): [https://murtaza7863.github.io/saa-c03/](https://murtaza7863.github.io/saa-c03/)
+
 ## How to use it
 
 **Learn mode (job first)**
