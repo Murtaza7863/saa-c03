@@ -3,29 +3,57 @@ lesson({
   order: 6,
   domain: 1,
   minutes: 18,
-  title: "IAM identities and policies",
+  title: "Who is allowed to do what (IAM)",
   summary:
-    "Users, groups, roles, and the policy evaluation that actually decides Allow or Deny.",
+    "Identity and Access Management is the lock on the account: people, computers, and rules that say Allow or Deny.",
   tags: ["iam", "policy", "least privilege", "mfa"],
+  youCan: [
+    "Say IAM is who can do what, on which resource, from where.",
+    "Prefer a role on a computer over a long-lived key file on the disk.",
+    "Remember: an explicit Deny wins; a second account needs permission on both sides.",
+  ],
   body: `
-    <p>IAM is the exam’s favorite lock. Almost every secure-architecture question is “who is allowed to call which API on which resource, from where?”</p>
-    <h2>Identities</h2>
+    <p><strong>Identity and Access Management (IAM)</strong> is the lock on the account. Every later security lesson, and almost every scary story at work, is the same sentence: <em>who is allowed to do what, on which resource, from where?</em></p>
+    <p>Think of a nightclub: a <strong>who</strong> (person, computer, or another AWS account), a <strong>door list</strong> (the policy — a written list of yes/no rules), and a <strong>room</strong> (the bucket, database, or computer they want to use).</p>
+    <div class="arch">
+      <div class="arch-label">Three kinds of “who”</div>
+      <div class="arch-row">
+        <div class="arch-box solid"><strong>A person</strong><small>you, a coworker — prefer Identity Center, not a long-lived IAM user</small></div>
+        <div class="arch-box"><strong>A computer or function</strong><small>EC2 / Lambda must talk to S3 — give it a role, not a password file</small></div>
+        <div class="arch-box"><strong>Another account</strong><small>needs permission on both sides, not only on yours</small></div>
+      </div>
+    </div>
+    <h2>Identities (the “who”)</h2>
     <ul>
-      <li><strong>IAM user</strong> — long-lived principal in one account. Avoid for humans if you can use Identity Center. Never embed user access keys in an app.</li>
-      <li><strong>Group</strong> — permission bundle for users. Cannot nest. Cannot be a principal for resource policies in the way a user/role can.</li>
-      <li><strong>Role</strong> — identity assumed with temporary credentials (STS). EC2, Lambda, federated humans, cross-account — this is the default pattern.</li>
-      <li><strong>Identity Center (SSO)</strong> — workforce users, permission sets (which become roles in accounts). Preferred over IAM users for people.</li>
+      <li><strong>IAM user</strong> — a long-lived login in one account (a username + password, and maybe access keys). Fine for a tiny personal sandbox. Companies prefer Identity Center for people. Never paste user access keys into an app.</li>
+      <li><strong>IAM group</strong> — a bundle of permissions you attach to IAM users. Groups do not nest. You do not hang a group on a computer.</li>
+      <li><strong>IAM role</strong> — an identity you <em>assume</em> for a while. Amazon’s Security Token Service hands out temporary keys that expire. EC2, Lambda, a vendor, another account — this is the default “who” for anything that is not a human typing a password every day.</li>
+      <li><strong>IAM Identity Center</strong> (workforce single sign-on) — employees. Permission sets become roles in each account. Preferred over IAM users for humans.</li>
     </ul>
-    <h2>Policy types you must not mix up</h2>
+    <p>An <strong>instance profile</strong> is just the envelope that hangs a role on an EC2 computer, so the computer can call AWS without a key file on the disk.</p>
+    <h2>What a policy is</h2>
+    <p>A <strong>policy</strong> is a JSON document (curly-brace text) that says Allow or Deny. An <strong>ARN</strong> (Amazon Resource Name) is the full address of one thing, like a file path for the cloud.</p>
+    <p>Where you <em>attach</em> the policy changes what it means:</p>
+    <p><strong>Identity-based</strong> = “this person/computer may…” <strong>Resource-based</strong> = “this bucket/key may be used by…” If the caller is in a <em>different</em> account, you usually need both.</p>
     <div class="table-wrap"><table>
       <tr><th>Type</th><th>Attached to</th><th>Job</th></tr>
       <tr><td>Identity-based</td><td>User, group, role</td><td>What this identity can do</td></tr>
       <tr><td>Resource-based</td><td>S3 bucket, KMS key, SQS, SNS, Lambda, Secrets Manager…</td><td>Who can use <em>this</em> resource (can include other accounts)</td></tr>
       <tr><td>Permission boundary</td><td>User or role</td><td>Max ceiling; used so a delegated admin cannot create a super-admin</td></tr>
-      <tr><td>SCP</td><td>Org OU / account</td><td>Account-wide ceiling</td></tr>
+      <tr><td>Service Control Policy (SCP)</td><td>Org OU / account</td><td>Account-wide ceiling (never grants)</td></tr>
       <tr><td>Session policy</td><td>AssumeRole call</td><td>Further restrict one session</td></tr>
     </table></div>
-    <h2>Evaluation (simplified, exam-useful)</h2>
+    <h2>How AWS decides yes or no (simplified)</h2>
+    <div class="arch">
+      <div class="arch-label">Read top to bottom</div>
+      <div class="arch-flow">
+        <div class="arch-box"><strong>1. Any explicit Deny?</strong><small>anywhere: identity, resource, SCP, boundary — stop, no</small></div>
+        <span class="arch-arrow" aria-hidden="true">→</span>
+        <div class="arch-box"><strong>2. Is there an Allow?</strong><small>the identity needs one. Another account also needs the resource’s own Allow</small></div>
+        <span class="arch-arrow" aria-hidden="true">→</span>
+        <div class="arch-box solid"><strong>3. Ceilings</strong><small>SCPs and permission boundaries never grant. They can only shrink.</small></div>
+      </div>
+    </div>
     <ol>
       <li>Explicit <strong>Deny</strong> anywhere (identity, resource, SCP, boundary, session) wins.</li>
       <li>Otherwise need an <strong>Allow</strong> from identity policy <em>and</em> (if a resource policy exists and the principal is from another account) the resource policy.</li>
@@ -33,6 +61,7 @@ lesson({
       <li>SCPs and boundaries cannot grant; they only allow the request if they don’t block it.</li>
     </ol>
     <h2>Least privilege in practice</h2>
+    <p>Give only what the job needs. “AdministratorAccess on the computer so the app works” is how breaches start.</p>
     <ul>
       <li>Prefer actions + resource ARNs + conditions (<code>aws:SourceIp</code>, <code>aws:SourceVpce</code>, <code>kms:ViaService</code>, <code>s3:x-amz-server-side-encryption</code>).</li>
       <li>MFA for humans; <code>aws:MultiFactorAuthPresent</code> on sensitive actions (stop instances, decrypt, delete vault).</li>
@@ -57,7 +86,7 @@ lesson({
       ],
       answer: 1,
       explain:
-        "Instance profiles mint temporary credentials via IMDS. That is the textbook answer.",
+        "The computer gets a role (an instance profile). Amazon mints temporary keys on the box. A long-lived access key file on disk is how keys get stolen.",
     },
     {
       q: "Account A’s Lambda must read a bucket in Account B. What is required?",
@@ -69,7 +98,7 @@ lesson({
       ],
       answer: 2,
       explain:
-        "Cross-account access needs both sides. Transfer Acceleration is performance, not auth.",
+        "Two different accounts: the caller needs permission, and the bucket in the other account must also allow that caller. Speeding up transfers does not grant access.",
     },
     {
       q: "A junior admin must create roles for apps but must not be able to create a role with AdministratorAccess. Tool?",
@@ -81,7 +110,7 @@ lesson({
       ],
       answer: 1,
       explain:
-        "Permission boundaries are the delegated-admin pattern. SCPs are account-wide, not ‘this one human.’",
+        "A permission boundary is a ceiling on that one person and on roles they create. A Service Control Policy is an account-wide ceiling, not “this one human.”",
     },
   ],
 });
@@ -96,6 +125,7 @@ lesson({
     "Temporary credentials, AssumeRole, Identity Center, Cognito, and cross-account patterns.",
   tags: ["sts", "assume role", "cognito", "identity center", "saml"],
   body: `
+    <p>You already know IAM is the lock. This lesson is how a <em>computer</em>, an <em>employee from the company directory</em>, or a <em>vendor</em> gets a short-lived key — not a password file on disk.</p>
     <h2>STS in one sentence</h2>
     <p><strong>AWS STS</strong> vends short-lived keys. <code>AssumeRole</code>, <code>AssumeRoleWithSAML</code>, <code>AssumeRoleWithWebIdentity</code>. Everything modern uses this instead of IAM user keys.</p>
     <h2>Trust policy vs permissions policy</h2>
@@ -159,6 +189,7 @@ lesson({
     "Multi-account is the real security boundary. Guardrails, sharing, and logging accounts.",
   tags: ["organizations", "scp", "control tower", "ram", "cloudtrail"],
   body: `
+    <p>One account is fine for labs. A company uses many accounts so a leak in “experiments” cannot delete production. This lesson is the fence between those accounts — and the log pile nobody on the app team can empty.</p>
     <h2>Why many accounts</h2>
     <p>Blast radius, billing tags/chargeback, different security teams, and SCP isolation. Typical OU layout: Security (Log Archive, Audit), Sandbox, Workloads (Prod/Nonprod), Suspended.</p>
     <h2>SCPs</h2>
@@ -225,6 +256,7 @@ lesson({
     "direct connect",
   ],
   body: `
+    <p>You already drew the private network. This lesson is the doors: who can knock, how you log in without opening port 22 to the world, and a private road to S3 so you don’t pay a NAT tax for file traffic.</p>
     <h2>Tiering</h2>
     <p>Internet-facing load balancer in public subnets. App and data in private. Databases: no public accessibility checkbox. Bastion or better: <strong>SSM Session Manager</strong> (no SSH port, IAM-auth, logging). If the stem still wants SSH, bastion in public + SG 22 only from that bastion.</p>
     <h2>Endpoints</h2>
@@ -288,6 +320,7 @@ lesson({
     "Edge protection and threat detection. Know what each finding-service is for.",
   tags: ["waf", "shield", "guardduty", "inspector", "macie", "security hub"],
   body: `
+    <p>Security groups stop ports. They do not read a URL. This lesson is the named products for “bad HTTP,” “flood,” “something weird in the account,” and “there are passport scans in a bucket.”</p>
     <h2>AWS WAF</h2>
     <p>Layer 7 rules on <strong>ALB, CloudFront, API Gateway, AppSync, Cognito (user pool)</strong>. SQL injection, XSS, rate-based rules, geo, IP sets, Bot Control. When the stem is “OWASP, malicious HTTP, rate limit API,” pick WAF — not security groups (they don’t parse HTTP).</p>
     <h2>AWS Shield</h2>

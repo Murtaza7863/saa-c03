@@ -8,6 +8,7 @@ lesson({
     "Prefixes, multipart, Transfer Acceleration, Object Lambda, consistency, and when S3 is the wrong disk.",
   tags: ["s3", "prefix", "multipart", "transfer acceleration"],
   body: `
+    <p>You already know S3 is a bucket, not a disk. This lesson is how to use that bucket well: private downloads, big uploads from far away, copies near users.</p>
     <p>S3 is object storage: HTTP, unlimited, 11 nines durability (Standard), strongly consistent reads after writes. It is not a block device and not NFS.</p>
     <h2>Performance</h2>
     <ul>

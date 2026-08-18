@@ -467,13 +467,18 @@ lesson({
   order: 5.5,
   domain: 0,
   minutes: 10,
-  title: "Official in-scope catalog",
+  title: "Phone book of in-scope names",
   summary:
-    "The exam guide’s in-scope list, as pick-when cues. Filterable copy lives under Tools → In-scope map.",
+    "Not a lesson to memorize. Search it when a practice question names a product you have not used.",
   tags: ["exam guide", "in-scope", "services"],
+  youCan: [
+    "Treat this page as a phone book, not a list to recite.",
+    "Search a product name and read the one-line “when.”",
+    "Skip out-of-scope toys (quantum, most IoT) for this exam.",
+  ],
   body: `
     <div class="source-note"><strong>Official, and incomplete on purpose.</strong> AWS says the in-scope list is non-exhaustive and can change. This is a study index, not a promise that every row appears on your form. Out-of-scope examples in the same guide include things like Braket and most IoT — don’t study those for SAA-C03.</div>
-    <p>Open the <a href="#/scope">filterable in-scope map</a> and search a stem noun (Textract, MQ, Outposts). If you cannot say the one-line “when,” you are not ready for that item.</p>
+    <p>You will not sit down and learn eighty product names in order. Open the <a href="#/scope">filterable in-scope map</a> when a practice question names something you skipped (Textract, MQ, Outposts). If you cannot say the one-line “when,” look it up — that is the point of a phone book.</p>
     <h2>How to use the catalog</h2>
     <ul>
       <li><strong>Purpose-built ML:</strong> the stem describes the job (faces, OCR, sentiment, speech). Pick Rekognition / Textract / Comprehend / Transcribe / Translate / Polly / Lex / Kendra. SageMaker is when they are <em>building a model</em>, not calling a managed AI API.</li>
@@ -481,7 +486,7 @@ lesson({
       <li><strong>Hybrid compute:</strong> Outposts = AWS in your DC. Wavelength = 5G edge. Local Zones = metro latency (foundations lesson). VMware Cloud on AWS is in-scope by name — pick it only if VMware is the constraint.</li>
       <li><strong>Don’t overfit rare names:</strong> Device Farm, Elastic Transcoder, AppFlow, Grafana/Prometheus show up as “which service does this job,” not as deep configuration.</li>
     </ul>
-    <p>Continue the path: IAM next. Come back to this catalog when a practice question names a service you skipped.</p>
+    <p>Continue the path: who is allowed to do what (IAM) next. Come back here when a practice question names a service you skipped.</p>
   `,
   traps: [
     "Treating the in-scope list as a permission to memorize every API.",

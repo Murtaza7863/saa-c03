@@ -8,15 +8,15 @@
     cues: [
       {
         if: "brand new to AWS",
-        then: "Picture first, names later, lab when a lesson says so",
+        then: "Picture first, optional account, labs to use AWS, Exam mode to sit the test",
       },
       {
         if: "empty Using AWS checklist",
-        then: "Normal. That page is a later project.",
+        then: "Normal. Tick only what you have clicked in a sandbox.",
       },
     ],
-    exam: `<p>This lesson is not exam content. The test is still multiple choice about design. Come back to “How SAA-C03 thinks” after the foundation pictures.</p>`,
-    job: `<p>You do not need an account today. When a lab asks, use a sandbox and a billing alarm — not root for daily work.</p>`,
+    exam: `<p>This lesson is not exam content. Two finish lines: labs prove you can use AWS; Exam mode proves you can take the written test. Come back to “How the written exam thinks” after the foundation pictures.</p>`,
+    job: `<p>You do not need an account today. When you want to click, open a throwaway account (not a company login), then Lab 1 — billing alarm, not root for daily work.</p>`,
   });
 
   add("exam-mindset", {
@@ -37,7 +37,6 @@
     ],
     exam: `<p>Underline the <em>ask</em> (last sentence) and every constraint. The distractor usually satisfies three of four. Extra services that were not requested are wrong.</p>`,
     job: `<p>At work you get a one-pager with SLAs and a budget, not a multiple-choice. Write the constraints down the same way. Hands-on comes after you have a picture of the design — not as day-one homework.</p>`,
-    labId: "lab-account",
   });
 
   add("global-infra", {
@@ -96,13 +95,29 @@
 
   add("compute-storage-db-map", {
     cues: [
-      { if: "POSIX Linux multi-AZ files", then: "EFS" },
+      { if: "shared Linux folder across two buildings", then: "EFS" },
       { if: "SMB / Windows / AD", then: "FSx for Windows" },
       { if: "SQL joins / existing MySQL or Postgres", then: "RDS or Aurora" },
       { if: "key-value, ms, huge scale", then: "DynamoDB" },
     ],
-    exam: `<p>S3 is not a disk. EBS is not multi-AZ. DynamoDB is not SQL joins. Redshift is not OLTP.</p>`,
-    job: `<p>Start from access pattern, not from a service you like. If you cannot name the key or the join, you cannot pick the database.</p>`,
+    exam: `<p>S3 is a bucket, not a disk. EBS is one disk in one Availability Zone. DynamoDB is not SQL joins. A warehouse (Redshift) is not a busy website database.</p>`,
+    job: `<p>Start from how you look data up, not from a service you like. If you cannot name the key or the join, you cannot pick the database.</p>`,
+  });
+
+  add("how-you-finish", {
+    cues: [
+      { if: "prove you can use AWS", then: "Labs 1–10 + Using AWS checklist" },
+      {
+        if: "prove you can take the test",
+        then: "Exam mode → trainer → timed 65",
+      },
+      {
+        if: "one year of design",
+        then: "Who the questions are written for, not a gate",
+      },
+    ],
+    exam: `<p>The exam is still written design questions. Labs do not appear on the test engine. Do them anyway if you want to use AWS on Monday.</p>`,
+    job: `<p>Day one at work looks like the labs, not like a multiple-choice stem. Keep both tracks.</p>`,
   });
 
   add("iam-core", {

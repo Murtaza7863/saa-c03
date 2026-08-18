@@ -72,15 +72,16 @@ window.SAA.guide = `
   Also read the exam guide’s in-scope / out-of-scope service lists so you do not study Braket-level topics for this exam.</p>
 
   <h2>How to study this site (method)</h2>
-  <p>This sequence is a study-guide procedure, not an AWS-published timetable. Hours-to-ready is not official; the only official experience cue is “at least 1 year hands-on.”</p>
+  <p>Two finish lines: <strong>use AWS</strong> (labs + Using AWS checklist) and <strong>sit the written exam</strong> (Exam mode → trainer → timed 65). This sequence is a study-guide procedure, not an AWS-published timetable. Hours-to-ready is not official; the only official experience cue is “at least 1 year hands-on design” — that describes who the questions are written for, not a lock on lesson 1.</p>
   <ol>
-    <li><strong>Read the official guide once</strong> — domains, scoring, in-scope list. Bookmark it. This site maps lessons to those domains; the guide still wins if they disagree. You can do this after a few picture lessons, not before lesson 1.</li>
-    <li><strong>Learn mode, in path order</strong> — start with the picture of AWS, then Regions, then the rest of Foundations. Security first among exam domains is 30% of scored content. Each lesson: picture, short why, then a tiny quiz. Labs are optional until you want them.</li>
-    <li><strong>Build the thing when you are ready</strong> — labs after the linked lesson. The exam has no console simulation (product page: multiple choice / multiple response only). Clicking a VPC still makes the picture real. The <a href="#/use">Using AWS</a> checklist is a later project, not day one.</li>
+    <li><strong>Pictures first (Learn mode, path order)</strong> — AWS is renting computers → where stuff lives → how the console looks. No account required. Each lesson: picture, short why, “you should be able to,” tiny quiz. The path is grouped by weeks (method, not official).</li>
+    <li><strong>Optional throwaway account</strong> — the “first hour” lesson, then Lab 1 (lock root, billing alarm). Skip until you want to click. Never use a company account for labs.</li>
+    <li><strong>Finish Foundations</strong> — who patches what, your private network, computers/files/databases. Then the fork: two finish lines. Then how the written questions are built. Then the in-scope phone book (search, don’t memorize).</li>
+    <li><strong>Build while you read Domain 1+</strong> — Security is 30% of scored content, so it comes first among exam domains. When a lesson has a Lab button, do that lab the same week. The exam has no console simulation (product page: multiple choice / multiple response only). Clicking still makes the picture real. Tick <a href="#/use">Using AWS</a> only for things you have actually done.</li>
     <li><strong>Service vs service until they are one-liners</strong> — open <a href="#/compare">comparisons</a>. Most items are a disguised pair. If you cannot say “this not that because &lt;constraint&gt;,” you are still on definitions.</li>
     <li><strong>High-miss pairs</strong> — <a href="#/misses">What people miss</a> then the <a href="#/lesson/high-miss">capstone lesson</a>. Those pairs are community-reported traps plus AWS-documented behavior. They are not an official “most missed” ranking.</li>
-    <li><strong>In-scope catalog</strong> — <a href="#/scope">filterable map</a> of the exam guide’s in-scope services. Use it when a practice item names a product you skipped.</li>
-    <li><strong>Exam mode</strong> — exam notes and keyword tables. Then the question trainer. Then a <em>timed</em> 65 / 130 mix. AWS’s own guide: unanswered is wrong, so finish the set.</li>
+    <li><strong>In-scope phone book</strong> — <a href="#/scope">filterable map</a> of the exam guide’s in-scope services. Use it when a practice item names a product you skipped.</li>
+    <li><strong>Exam mode (finish line B)</strong> — compressed notes and keyword tables. Then the question trainer. Then a <em>timed</em> 65 / 130 mix. AWS’s own guide: unanswered is wrong, so finish the set.</li>
     <li><strong>Fresh sets only for readiness</strong> — replaying the same bank until the letters stick is not a score. Use exam A, then B, then mixed trainer. Official AWS also sells a practice question set and a practice exam on Skill Builder; those are the only sets AWS authored.</li>
   </ol>
 
@@ -93,6 +94,7 @@ window.SAA.guide = `
     <li>If two remain, the qualifier decides. Extra services that were not requested are usually wrong.</li>
   </ol>
   <p>Pacing: 65 items / 130 minutes is about two minutes each. That arithmetic is official counts, not a coaching slogan. Flag and move; never leave blank (official: unanswered = incorrect).</p>
+  <p>Bookmark the <a href="https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html" rel="noopener" target="_blank">official exam guide</a> after a few picture lessons — not before lesson 1. This site maps to those domains; the guide still wins if they disagree.</p>
 
   <h2>What not to treat as fact</h2>
   <ul>

@@ -10,48 +10,50 @@
       id: 0,
       name: "Foundations",
       blurb:
-        "Pictures of how AWS is shaped. Exam rules come after you have a map.",
+        "Pictures, optional throwaway account, then how the written exam thinks.",
       color: "d0",
     },
     {
       id: 1,
-      name: "Secure Architectures",
-      blurb: "IAM, network boundaries, encryption. 30% of the exam.",
+      name: "Lock the door",
+      blurb:
+        "Who is allowed to do what, private networks, encryption. 30% of the exam.",
       color: "d1",
       weight: 30,
     },
     {
       id: 2,
-      name: "Resilient Architectures",
-      blurb: "Scale, decoupling, HA, disaster recovery. 26%.",
+      name: "Stay up",
+      blurb: "Stay up when a building or a computer dies. 26%.",
       color: "d2",
       weight: 26,
     },
     {
       id: 3,
-      name: "High-Performing Architectures",
-      blurb: "Storage, compute, databases, networks, data. 24%.",
+      name: "The right box",
+      blurb: "The right computer, disk, database, and network. 24%.",
       color: "d3",
       weight: 24,
     },
     {
       id: 4,
-      name: "Cost-Optimized Architectures",
-      blurb: "Right-size, purchase options, data-transfer traps. 20%.",
+      name: "The bill",
+      blurb:
+        "Don’t pay for idle machines or the wrong door to the internet. 20%.",
       color: "d4",
       weight: 20,
     },
     {
       id: 5,
-      name: "Capstone",
-      blurb: "Decision trees and exam-day pacing.",
+      name: "Exam day",
+      blurb: "Decision trees and exam-day pacing. Finish line B.",
       color: "d0",
     },
     {
       id: 6,
-      name: "On the job",
+      name: "Operate",
       blurb:
-        "How a cloud practitioner actually works: accounts, CLI, operate, fix.",
+        "How a cloud practitioner actually works: accounts, CLI, patch, restore. Finish line A around the diagram.",
       color: "d0",
     },
   ];
@@ -71,6 +73,21 @@
   }
   function lessonById(id) {
     return lessons().find((l) => l.id === id);
+  }
+  function phaseList() {
+    return window.SAA.phases || [];
+  }
+  function phaseKids(ph) {
+    return (ph.ids || []).map(lessonById).filter(Boolean);
+  }
+  function phaseProgress(ph) {
+    const kids = phaseKids(ph);
+    const done = kids.filter((l) => lessonState(l.id) === "done").length;
+    return {
+      done,
+      total: kids.length,
+      pct: kids.length ? Math.round((100 * done) / kids.length) : 0,
+    };
   }
   function byDomain(d) {
     return lessons().filter((l) => l.domain === d);
@@ -127,18 +144,21 @@
     const t = Store.get().theme || "light";
     document.documentElement.setAttribute("data-theme", t);
     document.documentElement.setAttribute("data-mode", mode());
-    document.getElementById("theme-btn").textContent =
-      t === "dark" ? "Light mode" : "Dark mode";
-    document.getElementById("mode-learn").classList.toggle("on", !isExam());
-    document.getElementById("mode-exam").classList.toggle("on", isExam());
+    const themeBtn = document.getElementById("theme-btn");
+    if (themeBtn)
+      themeBtn.textContent = t === "dark" ? "Light mode" : "Dark mode";
+    const ml = document.getElementById("mode-learn");
+    const me = document.getElementById("mode-exam");
+    if (ml) ml.classList.toggle("on", !isExam());
+    if (me) me.classList.toggle("on", isExam());
     const sub = document.getElementById("brand-sub");
     if (sub)
       sub.textContent = isExam() ? "Exam mode" : "Learn the job, then the exam";
   }
 
   function closeMenu() {
-    sidebar.classList.remove("open");
-    scrim.classList.remove("on");
+    if (sidebar) sidebar.classList.remove("open");
+    if (scrim) scrim.classList.remove("on");
   }
 
   function esc(s) {
@@ -147,6 +167,121 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function escapeRe(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function wordAliases(w) {
+    return [w.t].concat(w.aka || []).filter(Boolean);
+  }
+
+  function wordsSorted() {
+    return (window.SAA.words || []).slice().sort((a, b) => {
+      const la = Math.max.apply(
+        null,
+        wordAliases(a).map((x) => x.length),
+      );
+      const lb = Math.max.apply(
+        null,
+        wordAliases(b).map((x) => x.length),
+      );
+      return lb - la;
+    });
+  }
+
+  function wordRegex(alias, cs) {
+    return new RegExp(
+      "(^|[^A-Za-z0-9])(" + escapeRe(alias) + ")(?![A-Za-z0-9])",
+      cs ? "" : "i",
+    );
+  }
+
+  function wordsInText(text) {
+    const blob = String(text || "");
+    const hits = [];
+    for (const w of wordsSorted()) {
+      const cs = !!w.cs;
+      for (const a of wordAliases(w).sort((x, y) => y.length - x.length)) {
+        if (a.length < 2) continue;
+        if (wordRegex(a, cs).test(blob)) {
+          hits.push(w);
+          break;
+        }
+      }
+    }
+    return hits;
+  }
+
+  function lessonBlob(l) {
+    const quiz = (l.quiz || [])
+      .map(
+        (q) =>
+          q.q + " " + (q.explain || "") + " " + (q.choices || []).join(" "),
+      )
+      .join(" ");
+    return [
+      l.title,
+      l.summary,
+      (l.youCan || []).join(" "),
+      (l.already || []).join(" "),
+      String(l.body || "").replace(/<[^>]+>/g, " "),
+      (l.traps || []).join(" "),
+      quiz,
+    ].join("\n");
+  }
+
+  function wordsBox(hits, startOpen) {
+    if (!hits.length) return "";
+    return `<details class="words-box"${startOpen ? " open" : ""}>
+      <summary><strong>Words in this lesson (${hits.length})</strong> — hover dotted words in the text, or open this list</summary>
+      <p class="words-help">Each short name in plain language. Full course list: <a href="#/glossary">Glossary</a>.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Word</th><th>In plain language</th></tr></thead>
+        <tbody>${hits.map((w) => `<tr><td><strong>${esc(w.t)}</strong></td><td>${esc(w.d)}</td></tr>`).join("")}</tbody>
+      </table></div>
+    </details>`;
+  }
+
+  function annotateHtml(html) {
+    const list = wordsSorted();
+    if (!html || !list.length) return html;
+    const parts = String(html).split(/(<[^>]+>)/);
+    const used = {};
+    return parts
+      .map((part, i, arr) => {
+        if (!part) return part;
+        if (part.charAt(0) === "<") return part;
+        const prev = arr[i - 1] || "";
+        if (/^<(abbr|code|pre|script|style)\b/i.test(prev)) return part;
+        const slots = [];
+        let out = part;
+        for (const w of list) {
+          if (used[w.t]) continue;
+          const cs = !!w.cs;
+          const aliases = wordAliases(w).sort((x, y) => y.length - x.length);
+          for (const a of aliases) {
+            if (a.length < 2) continue;
+            const re = wordRegex(a, cs);
+            const m = re.exec(out);
+            if (!m) continue;
+            const token = "\uE000" + slots.length + "\uE001";
+            out =
+              out.slice(0, m.index) +
+              m[1] +
+              token +
+              out.slice(m.index + m[0].length);
+            slots.push(
+              '<abbr class="term" title="' + esc(w.d) + '">' + m[2] + "</abbr>",
+            );
+            used[w.t] = true;
+            break;
+          }
+        }
+        return out.replace(/\uE000(\d+)\uE001/g, (_, n) => slots[+n]);
+      })
+      .join("");
   }
 
   function nextIncomplete() {
@@ -161,9 +296,11 @@
 
   function renderNav(active) {
     const p = progress();
-    document.getElementById("top-progress").textContent = isExam()
-      ? `${p.quizPct}% quiz · exam`
-      : `${p.pct}% lessons · ${p.quizPct}% quiz`;
+    const top = document.getElementById("top-progress");
+    if (top)
+      top.textContent = isExam()
+        ? `${p.quizPct}% quiz · exam`
+        : `${p.pct}% lessons · ${p.quizPct}% quiz`;
     const toolIds = [
       "studio",
       "ops",
@@ -200,27 +337,61 @@
     html += `<a href="#/cheatsheet" class="${active === "cheatsheet" ? "active" : ""}">Cheat sheet</a>`;
     html += `<a href="#/glossary" class="${active === "glossary" ? "active" : ""}">Glossary</a>`;
     html += `</details>`;
-    const show = DOMAINS.filter((d) => (isExam() ? d.id !== 6 : true));
-    for (const d of show) {
-      const dp = domainProgress(d.id);
-      if (!dp.total) continue;
-      const kids = byDomain(d.id);
-      const open =
-        kids.some((l) => l.id === active) || (active === "home" && d.id === 0);
-      html += `<details class="nav-group" ${open ? "open" : ""}><summary><span>${esc(d.name)}</span><span>${dp.done}/${dp.total}</span></summary>`;
-      for (const l of kids) {
-        const st = lessonState(l.id);
-        html += `<a class="nav-lesson ${active === l.id ? "active" : ""}" href="#/lesson/${l.id}"><span class="dot ${st}"></span>${esc(l.title)}</a>`;
+    const phases = !isExam() ? phaseList() : [];
+    if (phases.length) {
+      for (const ph of phases) {
+        const kids = phaseKids(ph);
+        if (!kids.length) continue;
+        const dp = phaseProgress(ph);
+        const open =
+          kids.some((l) => l.id === active) ||
+          (active === "home" && ph.id === "pictures");
+        html += `<details class="nav-group" ${open ? "open" : ""}><summary><span>${esc(ph.name)}</span><span>${dp.done}/${dp.total}</span></summary>`;
+        for (const l of kids) {
+          const st = lessonState(l.id);
+          html += `<a class="nav-lesson ${active === l.id ? "active" : ""}" href="#/lesson/${l.id}"><span class="dot ${st}"></span>${esc(l.title)}</a>`;
+        }
+        html += `</details>`;
       }
-      html += `</details>`;
+    } else {
+      const show = DOMAINS.filter((d) => (isExam() ? d.id !== 6 : true));
+      for (const d of show) {
+        const dp = domainProgress(d.id);
+        if (!dp.total) continue;
+        const kids = byDomain(d.id);
+        const open =
+          kids.some((l) => l.id === active) ||
+          (active === "home" && d.id === 0);
+        html += `<details class="nav-group" ${open ? "open" : ""}><summary><span>${esc(d.name)}</span><span>${dp.done}/${dp.total}</span></summary>`;
+        for (const l of kids) {
+          const st = lessonState(l.id);
+          html += `<a class="nav-lesson ${active === l.id ? "active" : ""}" href="#/lesson/${l.id}"><span class="dot ${st}"></span>${esc(l.title)}</a>`;
+        }
+        html += `</details>`;
+      }
     }
     sideNav.innerHTML = html;
+  }
+
+  function stopExamTimers() {
+    Object.keys(examLive).forEach((id) => {
+      if (examLive[id] && examLive[id].timer) {
+        clearInterval(examLive[id].timer);
+        examLive[id].timer = null;
+      }
+    });
   }
 
   function route() {
     closeMenu();
     applyTheme();
-    const hash = decodeURIComponent(location.hash.slice(1) || "/");
+    stopExamTimers();
+    let hash = "/";
+    try {
+      hash = decodeURIComponent(location.hash.slice(1) || "/");
+    } catch (e) {
+      hash = "/";
+    }
     const parts = hash.split("/").filter(Boolean);
     const q = (search.value || "").trim();
     if (q && !parts[0]) return renderSearch(q);
@@ -264,7 +435,7 @@
         <section class="hero">
           <p class="kicker">Exam mode · SAA-C03</p>
           <h1>Train the way the test asks.</h1>
-          <p>Stems are stories with constraints. You pick the architecture that hits every constraint. Timed exams, a mixed question trainer, keyword tables, and exam notes — no long lectures in this mode.</p>
+          <p>The test is 65 written questions (no console). Learn mode is pictures, an optional account, and labs — start there if AWS still just “does cloud.” Come back here when you have a map.</p>
           <div class="hero-actions">
             <a class="btn primary" href="#/misses">What people miss</a>
             <a class="btn" href="#/drill">Question trainer</a>
@@ -272,11 +443,15 @@
           </div>
           <p class="meta" style="margin-top:1rem;color:var(--muted)">Quiz bank ${p.quizPct}% · ${exams.length} full exams · switch to Learn when you miss a topic and don't know why</p>
         </section>
-        <a class="card continue-card" href="#/lesson/${esc(next.id)}">
+        ${
+          next
+            ? `<a class="card continue-card" href="#/lesson/${esc(next.id)}">
           <p class="kicker">Next exam notes</p>
           <h2 style="margin:0 0 .35rem;font-size:1.15rem">${esc(next.title)}</h2>
           <p>${esc(next.summary)}</p>
-        </a>
+        </a>`
+            : ""
+        }
         <div class="grid-4">
           ${DOMAINS.filter((d) => d.weight)
             .map((d) => {
@@ -309,40 +484,45 @@
 
     view.innerHTML = `
       <section class="hero">
-        <p class="kicker">Learn mode · pictures first</p>
-        <h1>Start with a picture, not the exam.</h1>
-        <p>Usual AWS courses mix three things: a diagram, a short explanation, and (when you are ready) clicking in an account. This site does that. The test itself is multiple choice — you will not take it today, and you do not need an AWS account for lesson 1.</p>
+        <p class="kicker">Learn mode · from zero</p>
+        <h1>From “AWS is cloud” to using it — and sitting the exam.</h1>
+        <p>Start with pictures. Open a throwaway account only when a lesson says so. Labs teach you to click. Later, Exam mode teaches you the written test (65 questions, no console). You can finish both if you go in order.</p>
         <div class="hero-actions">
-          <a class="btn primary" href="#/lesson/${esc(next.id)}">${p.read ? "Continue" : "Start lesson 1"}</a>
+          ${next ? `<a class="btn primary" href="#/lesson/${esc(next.id)}">${p.read ? "Continue" : "Start lesson 1"}</a>` : ""}
           <a class="btn" href="#/path">See the path</a>
           <a class="btn ghost" href="#/guide">How the exam works (later)</a>
         </div>
         <p class="meta" style="margin-top:1rem;color:var(--muted)">${p.read}/${p.total} lessons · streak ${Store.get().streak.count} day${Store.get().streak.count === 1 ? "" : "s"}${lastL ? ` · last: ${esc(lastL.title)}` : ""}</p>
       </section>
-      <a class="card continue-card" href="#/lesson/${esc(next.id)}">
+      ${
+        next
+          ? `<a class="card continue-card" href="#/lesson/${esc(next.id)}">
         <p class="kicker">${p.read ? "Continue" : "Start here"}</p>
         <h2 style="margin:0 0 .35rem;font-size:1.15rem">${esc(next.title)}</h2>
         <p>${esc(next.summary)}</p>
         <div class="meta">${next.minutes} min · ${esc((DOMAINS.find((d) => d.id === next.domain) || {}).name || "")}</div>
-      </a>
+      </a>`
+          : ""
+      }
       <div class="grid-3" style="margin-top:1rem">
-        <a class="card" href="#/lesson/start-here"><p class="kicker">Pictures</p><h3>Lesson 1 · What AWS is</h3><p>One diagram. How courses usually teach. No account, no passing score.</p></a>
-        <a class="card" href="#/labs"><p class="kicker">Optional</p><h3>Sandbox labs (${labDone}/${labN})</h3><p>When a lesson says you are ready. Console path + CLI. Tear down the same day.</p></a>
-        <a class="card" href="#/use"><p class="kicker">Later</p><h3>Using AWS (${skDone}/${skills.length || 0})</h3><p>A checklist for after a few lessons. Empty boxes are normal.</p></a>
+        <a class="card" href="#/lesson/start-here"><p class="kicker">Start</p><h3>Lesson 1 · What AWS is</h3><p>One diagram. Then the console. Then an optional account. No exam score today.</p></a>
+        <a class="card" href="#/labs"><p class="kicker">Use AWS</p><h3>Sandbox labs (${labDone}/${labN})</h3><p>After the account lesson. Click in the AWS website. Delete what you create the same day.</p></a>
+        <a class="card" href="#/use"><p class="kicker">Use AWS</p><h3>Using AWS (${skDone}/${skills.length || 0})</h3><p>Tick only what you have actually done. Empty boxes are normal until the labs.</p></a>
       </div>
-      <div class="grid-4">
-        ${DOMAINS.filter((d) => d.weight)
-          .map((d) => {
-            const dp = domainProgress(d.id);
+      <div class="phase-home">
+        ${phaseList()
+          .map((ph) => {
+            const dp = phaseProgress(ph);
+            const kids = phaseKids(ph);
             const first =
-              byDomain(d.id).find((l) => lessonState(l.id) !== "done") ||
-              byDomain(d.id)[0];
+              kids.find((l) => lessonState(l.id) !== "done") || kids[0];
+            if (!first) return "";
             return `<a class="card" href="#/lesson/${first.id}">
-            <p class="kicker">${d.weight}% of exam</p>
-            <h3>${esc(d.name)}</h3>
-            <p>${esc(d.blurb)}</p>
-            <div class="bar ${d.color}"><span style="width:${dp.pct}%"></span></div>
-            <div class="meta">${dp.done}/${dp.total} lessons</div>
+            <p class="kicker">${esc(ph.week)}</p>
+            <h3>${esc(ph.name)}</h3>
+            <p>${esc(ph.blurb)}</p>
+            <div class="bar d0"><span style="width:${dp.pct}%"></span></div>
+            <div class="meta">${dp.done}/${dp.total} · ${esc(ph.use)}</div>
           </a>`;
           })
           .join("")}
@@ -357,7 +537,7 @@
   function renderGuide() {
     renderNav("guide");
     view.innerHTML = `<div class="lesson"><p class="kicker">Study guide</p><h1>How to study SAA-C03</h1>
-      <p class="lede">Official exam facts first. Then a method that matches how the items are written. Nothing here invents a pass rate or a “most missed question %.”</p>
+      <p class="lede">Two finish lines: use AWS (labs + this checklist), and sit the written exam. Official exam facts first. Method is labeled. Nothing here invents a pass rate.</p>
       <div class="lesson-body">${window.SAA.guide}</div></div>`;
   }
 
@@ -371,8 +551,8 @@
       <article class="lesson">
         <p class="kicker">Hands-on · later, not day one</p>
         <h1>Using AWS</h1>
-        <p class="lede">Come back after a few picture lessons. Empty boxes are expected. Tick only what you have actually done in a sandbox account — not what you have read.</p>
-        <div class="callout tip"><strong>If you are new</strong>Start with <a href="#/lesson/start-here">lesson 1</a>. Open an account only when a lab asks. Lab 1 is the first safe sandbox (billing alarm, not root for daily work).</div>
+        <p class="lede">This page is finish line A: you can log in, build a network, and not get a surprise bill. Tick only what you have actually done in a sandbox — not what you have read. Empty boxes are expected until the labs.</p>
+        <div class="callout tip"><strong>If you are new</strong>Pictures first: <a href="#/lesson/start-here">lesson 1</a>. When you want a real account, <a href="#/lesson/open-account">open a throwaway one</a>, then <a href="#/labs/lab-account">Lab 1</a> (billing alarm, not root for daily work). Finish line B (the written exam) is Exam mode, after Foundations.</div>
         <p class="meta" id="skill-meter">${n}/${skills.length} proven</p>
         <div class="skill-list">
           ${skills
@@ -406,7 +586,8 @@
         const count = skills.filter((s) => d[s.id]).length;
         const meter = document.getElementById("skill-meter");
         if (meter) meter.textContent = `${count}/${skills.length} proven`;
-        el.closest(".skill-item").classList.toggle("on", el.checked);
+        const item = el.closest(".skill-item");
+        if (item) item.classList.toggle("on", el.checked);
       };
     });
   }
@@ -421,16 +602,17 @@
   function renderPath() {
     renderNav("path");
     const nxt = nextIncomplete();
-    const list = isExam() ? DOMAINS.filter((d) => d.id !== 6) : DOMAINS;
-    view.innerHTML = `<p class="kicker">${isExam() ? "Exam notes" : "Learn path"}</p><h1>${isExam() ? "If the stem says X, pick Y" : "Learn in this order"}</h1>
-    <p class="lede">${isExam() ? "Open a lesson for compressed exam notes and a quiz. Use Learn mode for labs and the why." : "Pictures and a short why first. Labs when a lesson says you are ready. Exam notes live in Exam mode — not as lesson 1."}</p>
+    if (isExam()) {
+      const list = DOMAINS.filter((d) => d.id !== 6);
+      view.innerHTML = `<p class="kicker">Exam notes</p><h1>If the question says X, pick Y</h1>
+    <p class="lede">Open a lesson for compressed exam notes and a quiz. Use Learn mode for labs and the why.</p>
     ${list
       .map((d) => {
         const dp = domainProgress(d.id);
         if (!dp.total) return "";
         return `
         <section style="margin-bottom:1.6rem">
-          <div class="kicker">${d.weight ? d.weight + "% of scored exam" : d.id === 6 ? "Practitioner" : "Start here"}</div>
+          <div class="kicker">${d.weight ? d.weight + "% of scored exam" : "Start here"}</div>
           <h2 style="margin:0 0 .35rem">${esc(d.name)}</h2>
           <p style="color:var(--muted);margin:.2rem 0 .8rem">${esc(d.blurb)}</p>
           <div class="bar ${d.color}"><span style="width:${dp.pct}%"></span></div>
@@ -447,6 +629,48 @@
                 <h3>${n}. ${esc(l.title)}</h3>
                 <p>${esc(l.summary)}</p>
                 <div class="meta">${l.minutes} min · ${quiz} · ${lessonState(l.id) || "not started"}</div>
+              </a>`;
+              })
+              .join("")}
+          </div>
+        </section>`;
+      })
+      .join("")}`;
+      return;
+    }
+
+    const phases = phaseList();
+    view.innerHTML = `<p class="kicker">Learn path</p><h1>Learn in this order</h1>
+    <p class="lede">Weeks are a method, not an AWS timetable. Pictures first. Labs = use AWS. Later, Exam mode = sit the test. Lookup lessons are a phone book — search when a question names the tool.</p>
+    ${phases
+      .map((ph) => {
+        const dp = phaseProgress(ph);
+        const kids = phaseKids(ph);
+        if (!kids.length) return "";
+        return `
+        <section class="phase-block">
+          <div class="kicker">${esc(ph.week)}</div>
+          <h2 style="margin:0 0 .35rem">${esc(ph.name)}</h2>
+          <p style="color:var(--muted);margin:.2rem 0 .4rem">${esc(ph.blurb)}</p>
+          <p class="phase-use"><strong>Use AWS:</strong> ${esc(ph.use)}</p>
+          <div class="bar d0"><span style="width:${dp.pct}%"></span></div>
+          <div class="meta" style="margin:.35rem 0 .85rem">${dp.done}/${dp.total} lessons</div>
+          <div class="grid-2">
+            ${kids
+              .map((l) => {
+                const n = lessons().findIndex((x) => x.id === l.id) + 1;
+                const st = Store.get().lessons[l.id];
+                const quiz =
+                  st && st.quizTotal
+                    ? `${st.quizScore}/${st.quizTotal}`
+                    : "no quiz yet";
+                const lab = (window.SAA.labs || []).find(
+                  (lb) => lb.id === extra(l.id).labId,
+                );
+                return `<a class="card ${l.id === nxt.id ? "continue-card" : ""}" href="#/lesson/${l.id}">
+                <h3>${n}. ${esc(l.title)}${l.skim ? ` <span class="badge-skim">lookup</span>` : ""}</h3>
+                <p>${esc(l.summary)}</p>
+                <div class="meta">${l.minutes} min · ${quiz} · ${lessonState(l.id) || "not started"}${lab ? ` · lab: ${esc(lab.title)}` : ""}</div>
               </a>`;
               })
               .join("")}
@@ -491,9 +715,9 @@
           <p class="kicker">Exam notes · Lesson ${i + 1} · ${esc((DOMAINS.find((d) => d.id === l.domain) || {}).name || "")}</p>
           <h1>${esc(l.title)}</h1>
           <p class="lede">${esc(l.summary)}</p>
-          ${cues.length ? `<div class="table-wrap"><table><thead><tr><th>If the stem says…</th><th>Reach for…</th></tr></thead><tbody>${cues.map((c) => `<tr><td>${c.if}</td><td>${c.then}</td></tr>`).join("")}</tbody></table></div>` : ""}
-          <div class="lesson-body">${x.exam || l.body}</div>
-          ${l.traps && l.traps.length ? `<div class="callout trap"><strong>Wrong answers that look right</strong><ul>${l.traps.map((t) => `<li>${t}</li>`).join("")}</ul></div>` : ""}
+          ${cues.length ? `<div class="table-wrap"><table><thead><tr><th>If the question says…</th><th>Reach for…</th></tr></thead><tbody>${cues.map((c) => `<tr><td>${annotateHtml(esc(c.if || ""))}</td><td>${annotateHtml(esc(c.then || ""))}</td></tr>`).join("")}</tbody></table></div>` : ""}
+          <div class="lesson-body">${annotateHtml(x.exam || l.body)}</div>
+          ${l.traps && l.traps.length ? `<div class="callout trap"><strong>Wrong answers that look right</strong><ul>${l.traps.map((t) => `<li>${annotateHtml(esc(t))}</li>`).join("")}</ul></div>` : ""}
           ${relHtml}
           ${bar}
           <div class="lesson-nav">
@@ -506,13 +730,29 @@
     }
     view.innerHTML = `
       <article class="lesson">
-          <p class="kicker">Lesson ${i + 1} · ${esc((DOMAINS.find((d) => d.id === l.domain) || {}).name || "")} · ${l.minutes} min</p>
+          <p class="kicker">Lesson ${i + 1} · ${esc((DOMAINS.find((d) => d.id === l.domain) || {}).name || "")} · ${l.minutes} min${l.skim ? " · lookup" : ""}</p>
         <h1>${esc(l.title)}</h1>
         <p class="lede">${esc(l.summary)}</p>
-        <div class="lesson-body">${l.body}</div>
-        ${x.job ? `<h2 style="font-family:var(--font)">On the job</h2><div class="lesson-body">${x.job}</div>` : ""}
+        ${
+          l.skim && !isExam()
+            ? `<div class="callout tip"><strong>Lookup lesson</strong>Do not memorize APIs. Search this when a practice question names the tool. Skim the “when” lines, then move on.</div>`
+            : ""
+        }
+        ${
+          l.already && !isExam()
+            ? `<div class="callout compare"><strong>You already know</strong><ul>${l.already.map((line) => `<li>${annotateHtml(esc(line))}</li>`).join("")}</ul></div>`
+            : ""
+        }
+        ${
+          l.youCan && !isExam()
+            ? `<div class="callout tip"><strong>After this lesson you should be able to</strong><ul>${l.youCan.map((line) => `<li>${annotateHtml(esc(line))}</li>`).join("")}</ul></div>`
+            : ""
+        }
+        ${!isExam() ? wordsBox(wordsInText(lessonBlob(l)), l.order < 12) : ""}
+        <div class="lesson-body">${annotateHtml(l.body)}</div>
+        ${x.job ? `<h2 style="font-family:var(--font)">On the job</h2><div class="lesson-body">${annotateHtml(x.job)}</div>` : ""}
         ${lab ? `<div class="callout tip"><strong>Build this</strong><p>${esc(lab.title)} — ${esc(lab.summary)}</p><a class="btn" href="#/labs/${lab.id}">Open lab</a></div>` : ""}
-        ${l.traps && l.traps.length ? `<div class="callout trap"><strong>Common mix-ups</strong><ul>${l.traps.map((t) => `<li>${t}</li>`).join("")}</ul></div>` : ""}
+        ${l.traps && l.traps.length ? `<div class="callout trap"><strong>Common mix-ups</strong><ul>${l.traps.map((t) => `<li>${annotateHtml(esc(t))}</li>`).join("")}</ul></div>` : ""}
         ${relHtml}
         ${bar}
         <div class="lesson-nav">
@@ -531,8 +771,9 @@
     const num = idx + 1;
     const prev = all[idx - 1];
     const next = all[idx + 1];
+    const quiz = l.quiz || [];
     const state = {
-      answers: Array(l.quiz.length).fill(null),
+      answers: Array(quiz.length).fill(null),
       submitted: false,
       revealed: {},
     };
@@ -541,8 +782,8 @@
         <div class="quiz">
           <p class="kicker">${learn ? "Check understanding" : "Exam-style quiz"} · Lesson ${num}</p>
           <h1>${esc(l.title)}</h1>
-          <p class="lede">${learn ? "A few short questions. Wrong is fine — you get the why immediately." : "Same shape as the exam: one best answer unless it says choose two. No explanations until you submit."} <strong>${state.answers.filter((a) => a !== null && !(Array.isArray(a) && !a.length)).length}/${l.quiz.length}</strong> answered.</p>
-          ${l.quiz.map((q, qi) => qBlock(q, qi, { answers: state.answers, submitted: state.submitted || !!state.revealed[qi] })).join("")}
+          <p class="lede">${learn ? "A few short questions. Wrong is fine — you get the why immediately." : "Same shape as the exam: one best answer unless it says choose two. No explanations until you submit."} <strong>${state.answers.filter((a) => a !== null && !(Array.isArray(a) && !a.length)).length}/${quiz.length}</strong> answered.</p>
+          ${quiz.map((q, qi) => qBlock(q, qi, { answers: state.answers, submitted: state.submitted || !!state.revealed[qi] })).join("")}
           <div class="continue-bar">
             ${prev ? `<a class="btn ghost" href="#/lesson/${prev.id}">← Previous</a>` : `<a class="btn ghost" href="#/">Home</a>`}
             <button class="btn primary" id="submit-quiz">${state.submitted ? "Back to lesson" : learn ? "Save score" : "Submit quiz"}</button>
@@ -558,13 +799,14 @@
   }
 
   function qBlock(q, qi, state, opts = {}) {
+    if (!q) return "";
     const multi = !!q.multi;
     const chosen = state.answers[qi];
     const show = state.submitted;
     const correct = Array.isArray(q.answer) ? q.answer : [q.answer];
     return `<div class="q-card" data-q="${qi}">
-      <p><strong>Q${qi + 1}.</strong> ${q.multi ? "<em>Choose " + (q.choose || 2) + ".</em> " : ""}${q.q}</p>
-      ${q.choices
+      <p><strong>Q${qi + 1}.</strong> ${q.multi ? "<em>Choose " + (q.choose || 2) + ".</em> " : ""}${annotateHtml(esc(q.q || ""))}</p>
+      ${(q.choices || [])
         .map((c, ci) => {
           let cls = "choice";
           const selected = multi
@@ -573,10 +815,10 @@
           if (selected) cls += " selected";
           if (show && correct.includes(ci)) cls += " correct";
           if (show && selected && !correct.includes(ci)) cls += " wrong";
-          return `<button type="button" class="${cls}" data-q="${qi}" data-c="${ci}" ${show || opts.locked ? "disabled" : ""}>${esc(c)}</button>`;
+          return `<button type="button" class="${cls}" data-q="${qi}" data-c="${ci}" ${show || opts.locked ? "disabled" : ""}>${annotateHtml(esc(c))}</button>`;
         })
         .join("")}
-      ${show ? `<div class="explain">${q.explain}</div>` : ""}
+      ${show ? `<div class="explain">${annotateHtml(esc(q.explain || ""))}</div>` : ""}
     </div>`;
   }
 
@@ -585,8 +827,8 @@
       btn.onclick = () => {
         const qi = +btn.dataset.q;
         const ci = +btn.dataset.c;
-        const q = l.quiz[qi];
-        if (state.submitted || state.revealed[qi]) return;
+        const q = (l.quiz || [])[qi];
+        if (!q || state.submitted || state.revealed[qi]) return;
         if (q.multi) {
           const cur = Array.isArray(state.answers[qi])
             ? state.answers[qi].slice()
@@ -603,35 +845,41 @@
       };
     });
     const sub = document.getElementById("submit-quiz");
-    sub.onclick = () => {
-      if (state.submitted) {
-        location.hash = `#/lesson/${l.id}`;
-        return;
-      }
-      if (
-        state.answers.some((a) => a === null || (Array.isArray(a) && !a.length))
-      ) {
-        document.getElementById("quiz-result").innerHTML =
-          `<p class="callout trap">Answer every question first.</p>`;
-        return;
-      }
-      let score = 0;
-      l.quiz.forEach((q, i) => {
-        const correct = Array.isArray(q.answer)
-          ? q.answer.slice().sort().join(",")
-          : String(q.answer);
-        const got = Array.isArray(state.answers[i])
-          ? state.answers[i].slice().sort().join(",")
-          : String(state.answers[i]);
-        if (correct === got) score++;
-      });
-      Store.saveQuiz(l.id, score, l.quiz.length);
-      state.submitted = true;
-      paint();
-      document.getElementById("quiz-result").innerHTML =
-        `<div class="callout tip"><strong>Score ${score}/${l.quiz.length}</strong> ${score / l.quiz.length >= 0.7 ? "Good. If this was luck, switch to Exam mode and try the trainer." : "Below 70%. Re-read the lesson (Learn mode) or the exam notes, then retry."}</div>`;
-      renderNav(l.id);
-    };
+    if (sub)
+      sub.onclick = () => {
+        if (state.submitted) {
+          location.hash = `#/lesson/${l.id}`;
+          return;
+        }
+        if (
+          state.answers.some(
+            (a) => a === null || (Array.isArray(a) && !a.length),
+          )
+        ) {
+          const warn = document.getElementById("quiz-result");
+          if (warn)
+            warn.innerHTML = `<p class="callout trap">Answer every question first.</p>`;
+          return;
+        }
+        let score = 0;
+        (l.quiz || []).forEach((q, i) => {
+          const correct = Array.isArray(q.answer)
+            ? q.answer.slice().sort().join(",")
+            : String(q.answer);
+          const got = Array.isArray(state.answers[i])
+            ? state.answers[i].slice().sort().join(",")
+            : String(state.answers[i]);
+          if (correct === got) score++;
+        });
+        const total = (l.quiz || []).length;
+        Store.saveQuiz(l.id, score, total);
+        state.submitted = true;
+        paint();
+        const res = document.getElementById("quiz-result");
+        if (res)
+          res.innerHTML = `<div class="callout tip"><strong>Score ${score}/${total}</strong> ${total && score / total >= 0.7 ? "Good. If this was luck, switch to Exam mode and try the trainer." : "Below 70%. Re-read the lesson (Learn mode) or the exam notes, then retry."}</div>`;
+        renderNav(l.id);
+      };
   }
 
   function renderExamHub(examId, mode) {
@@ -707,20 +955,32 @@
     }
     renderNav("exam");
     if (mode === "review") return renderExamReview(exam);
+    if (!exam.questions || !exam.questions.length) {
+      view.innerHTML = "<p>No questions in this set.</p>";
+      return;
+    }
 
     if (!examLive[examId]) {
       examLive[examId] = {
         answers: Array(exam.questions.length).fill(null),
         flagged: {},
         i: 0,
-        ends: Date.now() + exam.minutes * 60 * 1000,
+        ends: Date.now() + (exam.minutes || 40) * 60 * 1000,
         timer: null,
       };
     }
     const st = examLive[examId];
+    if (Date.now() >= st.ends) {
+      submitExam(exam, st);
+      return;
+    }
 
     function paint() {
       const q = exam.questions[st.i];
+      if (!q) {
+        view.innerHTML = "<p>Question missing.</p>";
+        return;
+      }
       const remain = Math.max(0, st.ends - Date.now());
       const mm = String(Math.floor(remain / 60000)).padStart(2, "0");
       const ss = String(Math.floor((remain % 60000) / 1000)).padStart(2, "0");
@@ -761,21 +1021,27 @@
             paint();
           }),
       );
-      document.getElementById("prev").onclick = () => {
-        st.i--;
-        paint();
-      };
-      document.getElementById("flag").onclick = () => {
-        st.flagged[st.i] = !st.flagged[st.i];
-        paint();
-      };
-      document.getElementById("next").onclick = () => {
-        if (st.i === exam.questions.length - 1) submitExam(exam, st);
-        else {
-          st.i++;
+      const prevBtn = document.getElementById("prev");
+      const flagBtn = document.getElementById("flag");
+      const nextBtn = document.getElementById("next");
+      if (prevBtn)
+        prevBtn.onclick = () => {
+          st.i--;
           paint();
-        }
-      };
+        };
+      if (flagBtn)
+        flagBtn.onclick = () => {
+          st.flagged[st.i] = !st.flagged[st.i];
+          paint();
+        };
+      if (nextBtn)
+        nextBtn.onclick = () => {
+          if (st.i === exam.questions.length - 1) submitExam(exam, st);
+          else {
+            st.i++;
+            paint();
+          }
+        };
     }
 
     paint();
@@ -799,7 +1065,8 @@
     let score = 0;
     const per = { 1: [0, 0], 2: [0, 0], 3: [0, 0], 4: [0, 0] };
     questions.forEach((q, i) => {
-      per[q.domain][1]++;
+      const d = per[q.domain] ? q.domain : 2;
+      per[d][1]++;
       const correct = Array.isArray(q.answer)
         ? q.answer.slice().sort().join(",")
         : String(q.answer);
@@ -808,10 +1075,12 @@
         : String(answers[i]);
       if (correct === got) {
         score++;
-        per[q.domain][0]++;
+        per[d][0]++;
       }
     });
-    const pct = Math.round((score / questions.length) * 100);
+    const pct = questions.length
+      ? Math.round((score / questions.length) * 100)
+      : 0;
     const scaled = Math.max(100, Math.min(1000, Math.round(100 + pct * 9)));
     return { score, pct, scaled, per };
   }
@@ -840,7 +1109,7 @@
       <h1 class="results-score" style="color:${passed ? "var(--good)" : "var(--bad)"}">${rec.pct}%</h1>
       <p>Scaled cue: <strong>${rec.scaled}</strong> (720 to pass). Raw ${rec.score}/${exam.questions.length}. ${passed ? "Treat this as a pass signal — still review every miss." : "Not a pass yet. Drill the weak domain, then retake the other exam first."}</p>
       <div class="grid-4">
-        ${[1, 2, 3, 4].map((d) => `<div class="card"><h3>Domain ${d}</h3><p>${rec.per[d][0]}/${rec.per[d][1]}</p></div>`).join("")}
+        ${[1, 2, 3, 4].map((d) => `<div class="card"><h3>Domain ${d}</h3><p>${(rec.per && rec.per[d] && rec.per[d][0]) || 0}/${(rec.per && rec.per[d] && rec.per[d][1]) || 0}</p></div>`).join("")}
       </div>
       <div class="hero-actions" style="margin:1rem 0">
         <a class="btn" href="#/exam/${exam.id}">Retake</a>
@@ -930,7 +1199,7 @@
       view.innerHTML = `
         <p class="kicker">Sandbox</p>
         <h1>Hands-on labs</h1>
-        <p class="lede">Optional practice in a throwaway account — after a few picture lessons is soon enough. Billing alarm first. Each step has a console path and a CLI for CloudShell. Delete what you create. Order: account → network → identity → app → data → observe → money.</p>
+        <p class="lede">Finish line A: actually use AWS. Open a throwaway account first (<a href="#/lesson/open-account">first hour</a>), then Lab 1 (billing alarm). Each step has a console path and a CLI for CloudShell. Delete what you create. Order: account → network → identity → app → data → observe → money.</p>
         <div class="callout trap"><strong>Cost</strong>NAT gateways, RDS, and ALBs cost money while they exist. The labs tell you what to tear down. Free tier helps; it is not a promise of $0.</div>
         <div class="grid-2">
           ${labs
@@ -955,10 +1224,10 @@
         <p class="lede">${esc(lab.summary)}</p>
         <div class="callout tip"><strong>Goal</strong>${lab.goal}</div>
         <div class="lesson-body">${lab.why || ""}</div>
-        ${lab.steps
+        ${(lab.steps || [])
           .map((s, n) => {
             const paths = `${s.console ? `<p class="path-console"><strong>Console</strong> ${esc(s.console)}</p>` : ""}${s.cli ? `<pre class="cli">${esc(s.cli)}</pre>` : ""}`;
-            return `<div class="lab-step"><h3 data-n="${n + 1}">${esc(s.title)}</h3><div class="lesson-body">${s.html}${paths}</div></div>`;
+            return `<div class="lab-step"><h3 data-n="${n + 1}">${esc(s.title || "")}</h3><div class="lesson-body">${s.html || ""}${paths}</div></div>`;
           })
           .join("")}
         <div class="callout compare"><strong>You have it when</strong>${lab.verify}</div>
@@ -969,10 +1238,12 @@
           ${labs[i + 1] ? `<a class="btn" href="#/labs/${labs[i + 1].id}">Next lab</a>` : `<a class="btn" href="#/studio">Architecture studio</a>`}
         </div>
       </article>`;
-    document.getElementById("lab-done").onclick = () => {
-      Store.markLab(lab.id);
-      renderLabs(lab.id);
-    };
+    const doneBtn = document.getElementById("lab-done");
+    if (doneBtn)
+      doneBtn.onclick = () => {
+        Store.markLab(lab.id);
+        renderLabs(lab.id);
+      };
     window.scrollTo(0, 0);
   }
 
@@ -997,14 +1268,14 @@
     }
     const picks = new Set();
     function paint(done) {
-      const correct = new Set(cur.need);
+      const correct = new Set(cur.need || []);
       view.innerHTML = `
         <article class="lesson">
           <p class="kicker">Studio</p>
           <h1>${esc(cur.title)}</h1>
           <div class="lesson-body">${cur.brief}</div>
           <p><strong>Select every building block you would include. Skip extras that the brief does not need.</strong></p>
-          ${cur.options
+          ${(cur.options || [])
             .map((o) => {
               let cls = "studio-option";
               if (picks.has(o.id)) cls += " on";
@@ -1029,20 +1300,22 @@
           paint(false);
         };
       });
-      document.getElementById("studio-go").onclick = () => {
-        if (done) {
-          location.hash = "#/studio";
-          return;
-        }
-        let score = 0;
-        cur.options.forEach((o) => {
-          const want = correct.has(o.id);
-          const got = picks.has(o.id);
-          if (want === got) score++;
-        });
-        Store.markStudio(cur.id, score, cur.options.length);
-        paint(true);
-      };
+      const studioGo = document.getElementById("studio-go");
+      if (studioGo)
+        studioGo.onclick = () => {
+          if (done) {
+            location.hash = "#/studio";
+            return;
+          }
+          let score = 0;
+          (cur.options || []).forEach((o) => {
+            const want = correct.has(o.id);
+            const got = picks.has(o.id);
+            if (want === got) score++;
+          });
+          Store.markStudio(cur.id, score, (cur.options || []).length);
+          paint(true);
+        };
     }
     paint(false);
     window.scrollTo(0, 0);
@@ -1072,6 +1345,10 @@
   function renderCards() {
     renderNav("cards");
     const cards = window.SAA.cards || [];
+    if (!cards.length) {
+      view.innerHTML = "<p>No flashcards loaded.</p>";
+      return;
+    }
     let i = 0;
     let showBack = false;
     function due() {
@@ -1095,22 +1372,28 @@
         </div>
         <p class="tiny">${(i % list.length) + 1} / ${list.length}</p>
       `;
-      document.getElementById("flip").onclick = () => {
-        showBack = !showBack;
-        paint();
-      };
-      document.getElementById("know").onclick = () => {
-        Store.rateCard(c.id, true);
-        i++;
-        showBack = false;
-        paint();
-      };
-      document.getElementById("miss").onclick = () => {
-        Store.rateCard(c.id, false);
-        i++;
-        showBack = false;
-        paint();
-      };
+      const flip = document.getElementById("flip");
+      const know = document.getElementById("know");
+      const miss = document.getElementById("miss");
+      if (flip)
+        flip.onclick = () => {
+          showBack = !showBack;
+          paint();
+        };
+      if (know)
+        know.onclick = () => {
+          Store.rateCard(c.id, true);
+          i++;
+          showBack = false;
+          paint();
+        };
+      if (miss)
+        miss.onclick = () => {
+          Store.rateCard(c.id, false);
+          i++;
+          showBack = false;
+          paint();
+        };
     }
     paint();
   }
@@ -1119,6 +1402,10 @@
     renderNav("compare");
     const items = window.SAA.compares || [];
     const cur = items.find((x) => x.id === id) || items[0];
+    if (!cur) {
+      view.innerHTML = "<p>No comparison tables loaded.</p>";
+      return;
+    }
     view.innerHTML = `
       <p class="kicker">Decision tables</p>
       <h1>Service vs service</h1>
@@ -1151,6 +1438,7 @@
       <div class="table-wrap" id="scope-table"></div>`;
     const box = document.getElementById("scope-q");
     const table = document.getElementById("scope-table");
+    if (!box || !table) return;
     function paint() {
       const n = (box.value || "").trim().toLowerCase();
       const show = rows.filter(
@@ -1178,20 +1466,22 @@
     view.innerHTML = `
       <p class="kicker">Terms</p>
       <h1>Glossary</h1>
+      <p class="lede">Every short name the course uses, in plain language. In a lesson, hover a dotted word. This page is the full list.</p>
       <label class="search" style="max-width:100%;margin:0 0 1rem">
         <span>Filter</span>
-        <input id="gloss-q" type="search" placeholder="RPO, OAC, SCP…">
+        <input id="gloss-q" type="search" placeholder="IAM, NAT, queue, Region…">
       </label>
       <div class="table-wrap" id="gloss-table"></div>`;
     const box = document.getElementById("gloss-q");
     const table = document.getElementById("gloss-table");
+    if (!box || !table) return;
     function paint() {
       const n = (box.value || "").trim().toLowerCase();
       const show = g.filter(
         (x) => !n || (x.t + " " + x.d).toLowerCase().includes(n),
       );
-      table.innerHTML = `<table><thead><tr><th>Term</th><th>Meaning on this exam</th></tr></thead><tbody>
-        ${show.map((x) => `<tr><td><strong>${esc(x.t)}</strong></td><td>${x.d}</td></tr>`).join("")}
+      table.innerHTML = `<table><thead><tr><th>Word</th><th>In plain language</th></tr></thead><tbody>
+        ${show.map((x) => `<tr><td><strong>${esc(x.t)}</strong></td><td>${esc(x.d)}</td></tr>`).join("")}
       </tbody></table>`;
     }
     box.addEventListener("input", paint);
@@ -1210,7 +1500,7 @@
         " " +
         (l.tags || []).join(" ") +
         " " +
-        l.body.replace(/<[^>]+>/g, " ")
+        String(l.body || "").replace(/<[^>]+>/g, " ")
       ).toLowerCase();
       if (blob.includes(needle))
         hits.push({ href: `#/lesson/${l.id}`, title: l.title, sub: l.summary });
@@ -1298,18 +1588,21 @@
     Store.setTheme(Store.get().theme === "dark" ? "light" : "dark");
     applyTheme();
   };
-  document.getElementById("menu-btn").onclick = () => {
-    sidebar.classList.add("open");
-    scrim.classList.add("on");
-  };
-  scrim.onclick = closeMenu;
-  search.addEventListener("input", () => {
-    if ((search.value || "").trim()) {
-      if (location.hash && location.hash !== "#/")
-        history.replaceState(null, "", "#/");
-      renderSearch(search.value.trim());
-    } else route();
-  });
+  const menuBtn = document.getElementById("menu-btn");
+  if (menuBtn)
+    menuBtn.onclick = () => {
+      if (sidebar) sidebar.classList.add("open");
+      if (scrim) scrim.classList.add("on");
+    };
+  if (scrim) scrim.onclick = closeMenu;
+  if (search)
+    search.addEventListener("input", () => {
+      if ((search.value || "").trim()) {
+        if (location.hash && location.hash !== "#/")
+          history.replaceState(null, "", "#/");
+        renderSearch(search.value.trim());
+      } else route();
+    });
   window.addEventListener("hashchange", route);
   applyTheme();
   Store.touchStreak();

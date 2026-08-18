@@ -8,6 +8,7 @@ lesson({
     "You cannot optimize what you cannot allocate. Tools first, then architecture.",
   tags: ["cost explorer", "budgets", "cur", "tags"],
   body: `
+    <p>You cannot cheapen a bill you cannot read. Tags and a budget alarm come before “use Spot.” Lab 1’s email if spend moves is the tiny version of this page.</p>
     <ul>
       <li><strong>Cost allocation tags</strong> — activate in billing. Enforce with SCP/tag policies/Control Tower. No tags → no chargeback.</li>
       <li><strong>Cost Explorer</strong> — interactive, RI/SP recommendations, forecast. Human analysis.</li>

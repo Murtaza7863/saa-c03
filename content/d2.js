@@ -8,6 +8,7 @@ lesson({
     "ALB vs NLB vs GWLB, target health, and scaling policies that actually match the stem.",
   tags: ["alb", "nlb", "autoscaling", "target group"],
   body: `
+    <p>Stay-up in one city is more than two buildings: a traffic cop in front, and extra computers when it gets busy. That is a load balancer plus Auto Scaling. If you only built one computer, an alarm does not save you.</p>
     <h2>Elastic Load Balancing</h2>
     <div class="table-wrap"><table>
       <tr><th></th><th>ALB (L7)</th><th>NLB (L4)</th><th>GWLB</th></tr>
@@ -73,6 +74,7 @@ lesson({
     "SQS, SNS, EventBridge, MQ, and Step Functions — loose coupling is Domain 2’s heart.",
   tags: ["sqs", "sns", "eventbridge", "step functions", "mq"],
   body: `
+    <p>If the website waits for the email to send, a slow email kills the website. Put a waiting line between them. That is this lesson — queues, topics, and workflows.</p>
     <h2>Why decouple</h2>
     <p>Producers should not fail because consumers are slow. Scale independently. Absorb spikes. Retry without losing messages.</p>
     <div class="table-wrap"><table>
